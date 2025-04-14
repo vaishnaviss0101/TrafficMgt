@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}Transport Tracker{% endblock %}
+
+{% block content %}
+    <h1 class="mt-5">Track Your Transport</h1>
+
+    <!-- Dropdown for Transport Type -->
+    <div class="mb-3">
+        <label for="transportType" class="form-label">Transport Type</label>
+        <select class="form-control" id="transportType" onchange="fetchRouteNumbers()">
+            <option value="">Select Transport Type</option>
+            <option value="Bus">Bus</option>
+            <option value="Taxi">Taxi</option>
+            <option value="Train">Train</option>
+        </select>
+    </div>
+
+    <!-- Dropdown for Route Number -->
+    <div class="mb-3">
+        <label for="routeNumber" class="form-label">Route Number</label>
+        <select class="form-control" id="routeNumber">
+            <option value="">Select Route Number</option>
+            <!-- Dynamic route options will be populated here -->
+        </select>
+    </div>
+
+    <button class="btn btn-primary" onclick="fetchTransportData()">Track Transport</button>
+
+    <div class="mt-4">
+        <h3>Transport Data</h3>
+        <div id="status"></div>
+        <p id="eta"></p>
+        <pre id="transportData"></pre>
+    </div>
+
+    <!-- Display Map -->
+    <div id="map" style="height: 400px; width: 100%;"></div>
+
+    <script>
+        // Dynamically load the TomTom API
+        function loadTomTomAPI(callback) {
+            const script = document.createElement('script');
+            script.src = 'https://api.tomtom.com/maps-sdk-for-web/4.x/4.30.0/maps/maps-web.min.js';
+            script.onload = callback; // Call the provided callback after the script is loaded
+            document.head.appendChild(script);
+        }
+
+        // Callback function to initialize the map
+        function initializeMap() {
+            if (typeof tt === 'undefined') {
+               // alert('Error: TomTom API is not loaded.');
+                return;
+            }
+
+            // Initialize the map with TomTom
+            const map = new tt.map({
+                key: 'xwZEOc3WWeXltxv7Na5aSfhJZCvPs0Ar',  // Replace with your own TomTom API key
+                container: 'map',
+                center: [73.85685, 18.52041], // Default center for map, you can adjust
+                zoom: 14
+            });
+        }
+
+        // Load the TomTom API and initialize the map once loaded
+        loadTomTomAPI(initializeMap);
+
+        // Function to fetch transport data
+        async function fetchTransportData() {
+            const transportType = document.getElementById('transportType').value;
+            const routeNumber = document.getElementById('routeNumber').value;
+
+            if (!transportType || !routeNumber) {
+                alert("Please select both Transport Type and Route Number.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/get_transport_data/${transportType}/${routeNumber}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Show transport data
+                    document.getElementById('transportData').textContent = JSON.stringify(data, null, 2);
+
+                    // Show ETA
+                    document.getElementById('eta').textContent = `Estimated Arrival Time: ${data.eta}`;
+
+                    // Show transport status
+                    document.getElementById('status').textContent = `Status: ${data.status}`;
+
+                    // Show transport route and real-time location on the map
+                    showTransportRouteOnMap(data.coordinates);
+                } else {
+                    document.getElementById('transportData').textContent = `Error: ${data.error}`;
+                }
+            } catch (error) {
+                document.getElementById('transportData').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Function to show transport route on the map
+        function showTransportRouteOnMap(coordinates) {
+            // Wait for the TomTom API to be loaded
+            if (typeof tt === 'undefined') {
+               // alert('Error: TomTom API is not loaded.');
+                return;
+            }
+
+            // Initialize the map with TomTom
+            const map = new tt.map({
+                key: 'xwZEOc3WWeXltxv7Na5aSfhJZCvPs0Ar',  // Replace with your own TomTom API key
+                container: 'map',
+                center: [coordinates[0].longitude, coordinates[0].latitude],
+                zoom: 14
+            });
+
+            // Create a polyline from the coordinates (route)
+            const routeLine = new tt.map.Route({
+                coordinates: coordinates.map(coord => [coord.longitude, coord.latitude]),
+                lineWidth: 6,
+                lineColor: '#00A9E0',
+                lineOpacity: 0.8
+            }).addTo(map);
+
+            // Add a marker for the transport's current location (last point in the route)
+            const lastPoint = coordinates[coordinates.length - 1];
+            new tt.Marker()
+                .setLngLat([lastPoint.longitude, lastPoint.latitude])
+                .addTo(map);
+        }
+
+        // Populate route numbers dynamically based on transport type
+        async function fetchRouteNumbers() {
+            const transportType = document.getElementById('transportType').value;
+            if (!transportType) return;
+
+            // Example of dynamic route numbers, replace with your actual data fetch
+            const routes = {
+                "Bus": ["101", "102", "103"],
+                "Taxi": ["501", "502", "503"],
+                "Train": ["301", "302", "303"]
+            };
+
+            const routeNumberSelect = document.getElementById('routeNumber');
+            routeNumberSelect.innerHTML = "<option value=''>Select Route Number</option>";  // Reset options
+
+            // Add new route numbers to the dropdown
+            routes[transportType].forEach(route => {
+                const option = document.createElement('option');
+                option.value = route;
+                option.textContent = route;
+                routeNumberSelect.appendChild(option);
+            });
+        }
+    </script>
+
+{% endblock %}

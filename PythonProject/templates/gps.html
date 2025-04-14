@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- Navigation Bar with Search -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">Traffic App</a>
+    <form class="d-flex" id="location-search-form">
+      <input class="form-control me-2" type="search" placeholder="Enter location" aria-label="Search" id="location-input">
+      <button class="btn btn-outline-success" type="submit">Search</button>
+    </form>
+  </div>
+</nav>
+
+<!-- Main Content -->
+<div class="container mt-4">
+  <h3>GPS Location Detection</h3>
+  <p id="gps-location">Detecting location...</p>
+
+  <h3>Search Result</h3>
+  <p id="search-result"></p>
+
+  <h3>Real-time Traffic Updates</h3>
+  <div id="traffic-updates">
+    Loading traffic data...
+  </div>
+</div>
+
+<!-- JavaScript for Geolocation, Search, and Traffic Updates -->
+<script>
+  // Detect user's GPS location dynamically
+  function getLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(showPosition, showError);
+    } else {
+      $("#gps-location").html("Geolocation is not supported by this browser.");
+    }
+  }
+
+  function showPosition(position) {
+    var lat = position.coords.latitude;
+    var lon = position.coords.longitude;
+    $("#gps-location").html("Latitude: " + lat + "<br>Longitude: " + lon);
+  }
+
+  function showError(error) {
+    switch(error.code) {
+      case error.PERMISSION_DENIED:
+        $("#gps-location").html("User denied the request for Geolocation.");
+        break;
+      case error.POSITION_UNAVAILABLE:
+        $("#gps-location").html("Location information is unavailable.");
+        break;
+      case error.TIMEOUT:
+        $("#gps-location").html("The request to get user location timed out.");
+        break;
+      case error.UNKNOWN_ERROR:
+        $("#gps-location").html("An unknown error occurred.");
+        break;
+    }
+  }
+
+  // Fetch dynamic traffic updates from the server
+  function fetchTrafficUpdates() {
+    $.ajax({
+      url: '/traffic',
+      method: 'GET',
+      success: function(data) {
+        var html = '<p>Status: ' + data.status + '</p>';
+        html += '<ul>';
+        data.data.incidents.forEach(function(incident) {
+          html += '<li>' + incident.type + ' at ' + incident.location + '</li>';
+        });
+        html += '</ul>';
+        $("#traffic-updates").html(html);
+      },
+      error: function() {
+        $("#traffic-updates").html("<p>Error fetching traffic data.</p>");
+      }
+    });
+  }
+
+  // Handle location search dynamically
+  $("#location-search-form").on("submit", function(e) {
+    e.preventDefault();
+    var searchQuery = $("#location-input").val();
+    $.ajax({
+      url: '/search_location',
+      method: 'POST',
+      data: { query: searchQuery },
+      success: function(data) {
+        var resultHtml = "<p>" + data.message + "</p>";
+        resultHtml += "<p>Latitude: " + data.latitude + ", Longitude: " + data.longitude + "</p>";
+        $("#search-result").html(resultHtml);
+      },
+      error: function() {
+        $("#search-result").html("<p>Error searching for location.</p>");
+      }
+    });
+  });
+
+  // Initialize on document ready
+  $(document).ready(function() {
+    getLocation();
+    fetchTrafficUpdates();
+    // Optional: Refresh traffic data every 60 seconds
+    setInterval(fetchTrafficUpdates, 60000);
+  });
+</script>
+{% endblock %}

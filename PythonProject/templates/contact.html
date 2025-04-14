@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mt-4">Contact & Support</h2>
+
+    <!-- Emergency Helpline -->
+    <div class="card mt-3">
+        <div class="card-body">
+            <h4 class="card-title">Emergency Helpline</h4>
+            <p class="card-text">📞 Call <strong>+91 112</strong> for immediate traffic-related issues.</p>
+        </div>
+    </div>
+
+    <!-- Contact Form -->
+    <div class="card mt-3">
+        <div class="card-body">
+            <h4 class="card-title">Submit a Query</h4>
+            <form id="supportForm">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Name:</label>
+                    <input type="text" class="form-control" id="name" required>
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email:</label>
+                    <input type="email" class="form-control" id="email" required>
+                </div>
+                <div class="mb-3">
+                    <label for="message" class="form-label">Message:</label>
+                    <textarea class="form-control" id="message" rows="4" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+            <p id="responseMsg" class="mt-2"></p>
+        </div>
+    </div>
+
+    <!-- Support Query List -->
+    <div class="card mt-3">
+        <div class="card-body">
+            <h4 class="card-title">Support Queries</h4>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Message</th>
+                        <th>Date</th>
+                        <th>Submitted By</th>
+                    </tr>
+                </thead>
+                <tbody id="supportQueryTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        loadSupportQueries();
+
+        // Handle form submission
+        $("#supportForm").submit(function (event) {
+            event.preventDefault();
+
+            const requestData = {
+                name: $("#name").val(),
+                email: $("#email").val(),
+                message: $("#message").val()
+            };
+
+            $.ajax({
+                url: "/submit-support",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(requestData),
+                success: function (response) {
+                    $("#responseMsg").text(response.success).removeClass("text-danger").addClass("text-success");
+                    $("#supportForm")[0].reset();
+                    loadSupportQueries(); // Reload support queries after submission
+                },
+                error: function (response) {
+                    let errorMsg = response.responseJSON?.error || "An unexpected error occurred";
+                    $("#responseMsg").text(errorMsg).removeClass("text-success").addClass("text-danger");
+                }
+            });
+        });
+    });
+
+    function loadSupportQueries() {
+    $.getJSON('/get-support-queries', function (queries) {
+        let queryHtml = '';
+        let index = 1; // Start from 1
+
+        queries.forEach(query => {
+            queryHtml += `
+                <tr>
+                    <td>${index}</td> <!-- Auto-increment ID -->
+                    <td>${query.name}</td>
+                    <td>${query.email}</td>
+                    <td>${query.message}</td>
+                    <td>${new Date(query.submitted_at).toLocaleString()}</td>
+                    <td>${query.submitted_by || 'Guest'}</td>
+                </tr>
+            `;
+            index++; // Increment the ID
+        });
+
+        $("#supportQueryTable").html(queryHtml);
+    });
+}
+
+</script>
+{% endblock %}

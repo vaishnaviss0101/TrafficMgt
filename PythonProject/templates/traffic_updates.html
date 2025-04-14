@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2 class="text-center mt-4">Live Traffic Updates</h2>
+
+    <!-- Search Box for Location -->
+    <div class="container mt-3">
+        <h4>Search Location for Traffic Updates</h4>
+        <input type="text" id="location-search" class="form-control" placeholder="Enter location (e.g., Mumbai)" required>
+        <button id="search-location" class="btn btn-secondary mt-3">Search Location</button>
+    </div>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Form to report a traffic issue -->
+    <div class="container mt-3">
+        <h4>Report a Traffic Issue</h4>
+        <form id="traffic-report-form">
+            <div class="row">
+                <div class="col-md-6">
+                    <label>Origin:</label>
+                    <input type="text" id="origin" class="form-control" placeholder="e.g., Mumbai" required>
+                </div>
+                <div class="col-md-6">
+                    <label>Destination:</label>
+                    <input type="text" id="destination" class="form-control" placeholder="e.g., Pune" required>
+                </div>
+            </div>
+            <div class="mt-2">
+                <label>Congestion Level:</label>
+                <select id="congestion_level" class="form-control">
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                </select>
+            </div>
+            <div class="mt-2">
+                <label>Road Status:</label>
+                <input type="text" id="road_status" class="form-control" placeholder="Open / Closed" required>
+            </div>
+            <div class="mt-2">
+                <label>Accident Report:</label>
+                <textarea id="accident_report" class="form-control" placeholder="Optional details"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Submit Report</button>
+        </form>
+    </div>
+
+    <!-- Section to display traffic report details in a table -->
+    <div class="container mt-4">
+        <h4>Traffic Report Details</h4>
+        <div id="traffic-report-list"></div>
+    </div>
+
+    <!-- Leaflet and Socket.IO Dependencies -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+    <style>
+        #map { height: 500px; width: 100%; margin-top: 20px; }
+    </style>
+
+ <script>
+    var map = L.map('map').setView([19.0760, 72.8777], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    var markers = {};
+
+    function fetchTrafficUpdates(origin, destination) {
+        var url = `/get-traffic-updates?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                // Clear any existing markers
+                for (var key in markers) {
+                    map.removeLayer(markers[key]);
+                }
+                markers = {};
+
+                // Build HTML table with an extra Delete column
+                var tableHTML = '<table class="table table-bordered"><thead><tr>' +
+                                '<th>ID</th><th>Origin</th><th>Destination</th>' +
+                                '<th>Congestion Level</th><th>Road Status</th>' +
+                                '<th>Accident Report</th><th>Action</th></tr></thead><tbody>';
+                var index = 1;
+                data.db_traffic.forEach(function(entry) {
+                    tableHTML += `<tr>
+                                    <td>${index}</td>
+                                    <td>${entry.origin}</td>
+                                    <td>${entry.destination}</td>
+                                    <td>${entry.congestion_level}</td>
+                                    <td>${entry.road_status}</td>
+                                    <td>${entry.accident_report || "None"}</td>
+                                    <td>
+                                        <button onclick="deleteTraffic(${entry.id})" class="btn btn-danger btn-sm">
+                                            Delete
+                                        </button>
+                                    </td>
+                                  </tr>`;
+                    index ++;
+                });
+                tableHTML += '</tbody></table>';
+                document.getElementById("traffic-report-list").innerHTML = tableHTML;
+            });
+    }
+
+    // Function to delete a traffic record by id
+    function deleteTraffic(id) {
+        if (confirm("Are you sure you want to delete this record?")) {
+            fetch(`/delete-traffic/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                // Refresh the table. Adjust the parameters as needed.
+                fetchTrafficUpdates("", "");
+            })
+            .catch(error => console.error("Error deleting record:", error));
+        }
+    }
+
+    // Handle form submission to report traffic
+    document.getElementById("traffic-report-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        var reportData = {
+            origin: document.getElementById("origin").value,
+            destination: document.getElementById("destination").value,
+            congestion_level: document.getElementById("congestion_level").value,
+            road_status: document.getElementById("road_status").value,
+            accident_report: document.getElementById("accident_report").value
+        };
+
+        fetch('/report-traffic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reportData)
+        })
+        .then(response => response.json())
+        .then(result => {
+            alert(result.message);
+            fetchTrafficUpdates(reportData.origin, reportData.destination);
+        });
+    });
+
+    // Geocode a location and update the map. In this case, the search box still works with lat/lon.
+    document.getElementById("search-location").addEventListener("click", function() {
+        var locationName = document.getElementById("location-search").value;
+        var geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationName)}&format=json&addressdetails=1`;
+
+        fetch(geocodeUrl)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    var lat = data[0].lat;
+                    var lon = data[0].lon;
+                    map.setView([lat, lon], 13);
+                    // Refresh without filtering by origin/destination.
+                    fetchTrafficUpdates("", "");
+                } else {
+                    alert("Location not found. Please try again.");
+                }
+            })
+            .catch(error => alert("Error geocoding location: " + error));
+    });
+
+    // Fetch traffic updates on page load with default parameters.
+    fetchTrafficUpdates("", "");
+</script>
+
+
+{% endblock %}

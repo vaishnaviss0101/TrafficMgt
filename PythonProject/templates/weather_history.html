@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1 class="text-center mt-4">Weather and Traffic Management</h1>
+
+    <!-- Weather Fetch Form -->
+    <div class="mt-5">
+        <h3>Fetch Weather Data</h3>
+        <form action="/weather" method="POST" class="form-inline">
+            <div class="form-group mb-2">
+                <label for="city" class="sr-only">City</label>
+                <input type="text" name="city" id="city" class="form-control" placeholder="Enter City Name" required>
+            </div>
+            <button type="submit" class="btn btn-primary mb-2">Get Weather</button>
+        </form>
+    </div>
+
+    <!-- Weather Result Section -->
+    {% if weather_data %}
+    <div class="mt-4">
+        <h4>Weather for {{ weather_data.city }}:</h4>
+        <ul class="list-group">
+            <li class="list-group-item"><strong>Weather Condition:</strong> {{ weather_data.weather_main }} - {{ weather_data.description }}</li>
+            <li class="list-group-item"><strong>Temperature:</strong> {{ weather_data.temperature }}°C</li>
+            <li class="list-group-item"><strong>Humidity:</strong> {{ weather_data.humidity }}%</li>
+            <li class="list-group-item"><strong>Wind Speed:</strong> {{ weather_data.wind_speed }} m/s</li>
+            <li class="list-group-item"><strong>Road Condition:</strong> {{ weather_data.road_condition }}</li>
+            <li class="list-group-item"><strong>Traffic Signal Change:</strong> {{ 'Yes' if weather_data.traffic_signal_change else 'No' }}</li>
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Weather History Section -->
+    <div class="mt-5">
+        <h3>Weather Data History (Last 10 Records)</h3>
+        {% if weather_history %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>City</th>
+                    <th>Weather</th>
+                    <th>Temperature (°C)</th>
+                    <th>Humidity (%)</th>
+                    <th>Wind Speed (m/s)</th>
+                    <th>Road Condition</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in weather_history %}
+                <tr>
+                    <td>{{ record[1] }}</td>
+                    <td>{{ record[2] }} - {{ record[3] }}</td>
+                    <td>{{ record[4] }}</td>
+                    <td>{{ record[5] }}</td>
+                    <td>{{ record[6] }}</td>
+                    <td>{{ record[7] }}</td>
+                    <td>{{ record[8] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No weather history available.</p>
+        {% endif %}
+    </div>
+{% endblock %}

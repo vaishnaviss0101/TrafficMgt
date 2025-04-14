@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2 class="text-center mt-4">Live Route Recommendation</h2>
+
+  <!-- Route Recommendation Form -->
+  <div class="container mt-4">
+    <form id="route-form">
+      <div class="row">
+        <div class="col-md-6">
+          <label for="origin-location">Origin Location:</label>
+          <input type="text" id="origin-location" class="form-control" placeholder="Enter origin location" value="Pune" required>
+        </div>
+        <div class="col-md-6">
+          <label for="dest-location">Destination Location:</label>
+          <input type="text" id="dest-location" class="form-control" placeholder="Enter destination location" value="Mumbai" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary mt-3">Get Route Recommendation</button>
+    </form>
+  </div>
+
+  <!-- Map Container -->
+  <div class="container mt-4">
+    <div id="route-map" style="height: 500px; width: 100%;"></div>
+  </div>
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+  <script>
+    // Initialize the map centered at Pune by default
+    var map = L.map('route-map').setView([18.5204, 73.8567], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    var routeLayer = null; // To store the current route layer
+    var origin, destination;
+    var updateInterval; // To hold the interval for dynamic updates
+
+    // Function to fetch coordinates from location name using Nominatim API
+    function geocodeLocation(locationName) {
+      var geocodeUrl = "https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(locationName) + "&format=json&addressdetails=1";
+
+      return fetch(geocodeUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (data.length > 0) {
+            return {
+              lat: parseFloat(data[0].lat),
+              lon: parseFloat(data[0].lon)
+            };
+          } else {
+            throw new Error("Location not found");
+          }
+        });
+    }
+
+    // Function to fetch a route from OSRM API and display it on the map
+    function getRouteRecommendation(originLat, originLon, destLat, destLon) {
+      // Construct OSRM API URL for driving mode
+      var osrmUrl = "http://router.project-osrm.org/route/v1/driving/" +
+                    originLon + "," + originLat + ";" + destLon + "," + destLat +
+                    "?overview=full&geometries=geojson";
+
+      fetch(osrmUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (data.code === "Ok") {
+            var route = data.routes[0];
+            // Remove previous route if exists
+            if (routeLayer) {
+              map.removeLayer(routeLayer);
+            }
+            // Create a new GeoJSON layer with the route geometry
+            routeLayer = L.geoJSON(route.geometry, {color: 'blue'}).addTo(map);
+            // Fit the map bounds to the new route
+            map.fitBounds(routeLayer.getBounds());
+          } else {
+            alert("No route found or an error occurred.");
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching route:", error);
+          alert("Error fetching route.");
+        });
+    }
+
+    // Handle form submission for dynamic route recommendation
+    document.getElementById("route-form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      var originLocation = document.getElementById("origin-location").value;
+      var destinationLocation = document.getElementById("dest-location").value;
+
+      // Geocode the origin and destination locations to get latitude and longitude
+      Promise.all([
+        geocodeLocation(originLocation),
+        geocodeLocation(destinationLocation)
+      ])
+      .then(coordinates => {
+        origin = coordinates[0];
+        destination = coordinates[1];
+
+        // Fetch and display the initial route
+        getRouteRecommendation(origin.lat, origin.lon, destination.lat, destination.lon);
+
+        // Clear any existing interval, then set up dynamic updates every 30 seconds
+        if (updateInterval) clearInterval(updateInterval);
+        updateInterval = setInterval(function(){
+          getRouteRecommendation(origin.lat, origin.lon, destination.lat, destination.lon);
+        }, 30000);
+      })
+      .catch(error => {
+        console.error("Error geocoding locations:", error);
+        alert("Error geocoding locations. Please check the entered location names.");
+      });
+    });
+  </script>
+{% endblock %}

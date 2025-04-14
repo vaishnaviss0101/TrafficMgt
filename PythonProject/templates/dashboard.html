@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1 class="text-center mt-4">Dashboard</h1>
+
+   <!-- User Info Section -->
+<div class="mt-4">
+    <h3>User Profile</h3>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3">
+                <p><strong>First Name:</strong> {{ dashboard_data.user_info.first_name }}</p>
+            </div>
+            <div class="col-md-3">
+                <p><strong>Last Name:</strong> {{ dashboard_data.user_info.last_name }}</p>
+            </div>
+            <div class="col-md-3">
+                <p><strong>Email:</strong> {{ dashboard_data.user_info.email }}</p>
+            </div>
+            <div class="col-md-3">
+                <p><strong>Role:</strong> {{ dashboard_data.user_info.role }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Latest Location Section -->
+<div class="mt-5">
+    <h3>Latest Location Updates</h3>
+    {% if dashboard_data.location %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                    <th>Created By</th>
+                    <th>Created At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in dashboard_data.location %}
+                    <tr>
+                        <td>{{ record.latitude }}</td>
+                        <td>{{ record.longitude }}</td>
+                        <td>{{ record.created_by }}</td>
+                        <td>{{ record.timestamp }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No location data available.</p>
+    {% endif %}
+</div>
+
+
+<!-- Weather Data Section -->
+<div class="mt-5">
+    <h3>Weather Information</h3>
+    {% if dashboard_data.weather_data %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>City</th>
+                    <th>Weather Condition</th>
+                    <th>Description</th>
+                    <th>Temperature</th>
+                    <th>Humidity</th>
+                    <th>Wind Speed</th>
+                    <th>Road Condition</th>
+                    <th>Created By</th>
+                    <th>Created At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in dashboard_data.weather_data %}
+                <tr>
+                    <td>{{ record.city }}</td>
+                    <td>{{ record.weather_main }}</td>
+                    <td>{{ record.description }}</td>
+                    <td>{{ record.temperature }}°C</td>
+                    <td>{{ record.humidity }}%</td>
+                    <td>{{ record.wind_speed }} m/s</td>
+                    <td>{{ record.road_condition }}</td>
+                    <td>{{ record.created_by }}</td>
+                    <td>{{ record.timestamp }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No weather data available.</p>
+    {% endif %}
+</div>
+
+
+    <!-- Traffic Updates Section -->
+    <div class="mt-5">
+        <h3>Recent Traffic Updates</h3>
+        {% if dashboard_data.traffic_updates %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Origin</th>
+                        <th>Destination</th>
+                        <th>Congestion Level</th>
+                        <th>Road Status</th>
+                        <th>Accident Report</th>
+                        <th>Created By</th>
+                        <th>Created At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for update in dashboard_data.traffic_updates %}
+                    <tr>
+                        <td>{{ update.origin }}</td>
+                        <td>{{ update.destination }}</td>
+                        <td>{{ update.congestion_level }}</td>
+                        <td>{{ update.road_status }}</td>
+                        <td>{{ update.accident_report }}</td>
+                        <td>{{ update.created_by }}</td>
+                        <td>{{ update.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No traffic updates available.</p>
+        {% endif %}
+    </div>
+
+    <!-- Support Queries Section -->
+    <div class="mt-5">
+        <h3>Recent Support Queries</h3>
+        {% if dashboard_data.support_queries %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Message</th>
+                        <th>Created By</th>
+                        <th>Created At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for query in dashboard_data.support_queries %}
+                    <tr>
+                        <td>{{ query.name }}</td>
+                        <td>{{ query.email }}</td>
+                        <td>{{ query.message }}</td>
+                        <td>{{ query.created_by }}</td>
+                        <td>{{ query.submitted_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No support queries available.</p>
+        {% endif %}
+    </div>
+
+{% endblock %}

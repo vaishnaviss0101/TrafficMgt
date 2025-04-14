@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2 class="text-center mt-4">Real-Time User Location Tracking</h2>
+    <div id="map"></div>
+
+    <!-- Leaflet.js for Map Display -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+    <style>
+        #map { height: 500px; width: 100%; margin-top: 20px; }
+    </style>
+
+    <script>
+        var map = L.map('map').setView([20.5937, 78.9629], 5); // Default center (India)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        var markers = {};
+
+        function updateLocation(position) {
+            var data = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            };
+
+            fetch('/update-location', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            console.log("Location sent to server:", data);
+        }
+
+        function getLiveLocations() {
+            fetch('/get-locations')
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(user => {
+                    if (markers[user.user_id]) {
+                        markers[user.user_id].setLatLng([user.latitude, user.longitude]);
+                    } else {
+                        markers[user.user_id] = L.marker([user.latitude, user.longitude])
+                            .addTo(map)
+                            .bindPopup(`User: ${user.name}`);
+                    }
+                });
+            });
+        }
+
+        navigator.geolocation.watchPosition(updateLocation, console.error, { enableHighAccuracy: true });
+
+        // WebSocket connection to update locations live
+        var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+        socket.on('location_update', function(data) {
+            if (markers[data.user_id]) {
+                markers[data.user_id].setLatLng([data.latitude, data.longitude]);
+            } else {
+                markers[data.user_id] = L.marker([data.latitude, data.longitude])
+                    .addTo(map)
+                    .bindPopup(`User: ${data.user_id}`);
+            }
+        });
+
+        setInterval(getLiveLocations, 5000);
+    </script>
+{% endblock %}
